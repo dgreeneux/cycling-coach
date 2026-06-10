@@ -30,13 +30,22 @@ export async function refreshToken(refresh_token) {
   return res.json()
 }
 
-export async function getActivities(accessToken, perPage = 10) {
-  const res = await fetch(
-    `${BASE}/api/v3/athlete/activities?per_page=${perPage}&type=Ride`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  )
-  if (!res.ok) throw new Error(`Strava activities fetch failed: ${res.statusText}`)
-  return res.json()
+export async function getAllActivities(accessToken) {
+  const all = []
+  let page = 1
+  while (true) {
+    const res = await fetch(
+      `${BASE}/api/v3/athlete/activities?per_page=200&page=${page}&sport_type=Ride`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    )
+    if (!res.ok) throw new Error(`Strava activities fetch failed: ${res.statusText}`)
+    const batch = await res.json()
+    if (!batch.length) break
+    all.push(...batch)
+    if (batch.length < 200) break
+    page++
+  }
+  return all
 }
 
 export function formatActivity(a) {

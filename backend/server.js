@@ -6,7 +6,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { chat } from './providers.js'
 import { SYSTEM_PROMPT } from './coach.js'
-import { exchangeToken, getActivities, formatActivity, getValidToken } from './strava.js'
+import { exchangeToken, getAllActivities, formatActivity, getValidToken } from './strava.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const DATA_FILE = path.join(__dirname, 'data.json')
@@ -102,7 +102,7 @@ app.post('/api/strava/sync', async (req, res) => {
   try {
     const data = loadData()
     const token = await getValidToken(data)
-    const activities = await getActivities(token, 20)
+    const activities = await getAllActivities(token)
     const formatted = activities.map(formatActivity)
 
     // Merge — skip rides already imported from Strava
