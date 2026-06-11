@@ -54,10 +54,11 @@ export function formatActivity(a) {
     source: 'strava',
     date: a.start_date,
     name: a.name,
-    distance: +(a.distance / 1000).toFixed(1),       // km
-    duration: Math.round(a.moving_time / 60),         // minutes
+    isRace: a.workout_type === 1 || a.workout_type === 11,
+    distance: +(a.distance / 1000).toFixed(1),        // km
+    duration: Math.round(a.moving_time / 60),          // minutes
     elevationGain: Math.round(a.total_elevation_gain), // metres
-    avgSpeed: +(a.average_speed * 3.6).toFixed(1),    // km/h
+    avgSpeed: +(a.average_speed * 3.6).toFixed(1),     // km/h
     avgHR: a.average_heartrate || null,
     avgPower: a.average_watts || null,
     sufferScore: a.suffer_score || null,

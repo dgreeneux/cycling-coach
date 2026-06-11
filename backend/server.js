@@ -26,14 +26,30 @@ function saveData(data) {
 
 function buildCoachContext(data) {
   if (!data.rides.length) return ''
-  const recent = data.rides.slice(-5)
-  const summary = recent.map(r =>
-    `${r.date?.slice(0, 10)}: ${r.name || 'Ride'}, ${r.distance}km, ${r.duration}min` +
-    (r.avgPower ? `, ${r.avgPower}W avg` : '') +
-    (r.avgHR ? `, ${r.avgHR}bpm avg HR` : '') +
-    (r.elevationGain ? `, ${r.elevationGain}m elevation` : '')
+  const rides = data.rides
+  const races = rides.filter(r => r.isRace)
+  const totalKm = rides.reduce((s, r) => s + (r.distance || 0), 0).toFixed(0)
+  const totalHours = (rides.reduce((s, r) => s + (r.duration || 0), 0) / 60).toFixed(0)
+
+  // Last 4 weeks
+  const fourWeeksAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString()
+  const recentRides = rides.filter(r => r.date >= fourWeeksAgo)
+  const recentKm = recentRides.reduce((s, r) => s + (r.distance || 0), 0).toFixed(0)
+
+  const stats = [
+    `Total rides: ${rides.length} (${races.length} races)`,
+    `Total distance: ${totalKm}km over ${totalHours} hours`,
+    `Last 4 weeks: ${recentRides.length} rides, ${recentKm}km`,
+  ].join('\n')
+
+  const detail = rides.slice(-20).map(r =>
+    `${r.date?.slice(0, 10)}: ${r.isRace ? '[RACE] ' : ''}${r.name || 'Ride'}, ${r.distance}km, ${r.duration}min` +
+    (r.avgPower ? `, ${r.avgPower}W` : '') +
+    (r.avgHR ? `, ${r.avgHR}bpm` : '') +
+    (r.elevationGain ? `, ${r.elevationGain}m elev` : '')
   ).join('\n')
-  return `\n\nThe cyclist has ${data.rides.length} logged ride(s). Most recent 5:\n${summary}`
+
+  return `\n\nCyclist training data:\n${stats}\n\nMost recent 20 rides:\n${detail}`
 }
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
@@ -105,12 +121,13 @@ app.post('/api/strava/sync', async (req, res) => {
     const activities = await getAllActivities(token)
     const formatted = activities.map(formatActivity)
 
-    // Merge — skip rides already imported from Strava
+    // Replace all Strava rides with fresh data (preserves manual rides)
+    const manualRides = data.rides.filter(r => r.source !== 'strava')
     const existingIds = new Set(data.rides.filter(r => r.source === 'strava').map(r => r.id))
     const newRides = formatted.filter(r => !existingIds.has(r.id))
-    data.rides = [...data.rides, ...newRides].sort((a, b) => new Date(a.date) - new Date(b.date))
+    data.rides = [...manualRides, ...formatted].sort((a, b) => new Date(a.date) - new Date(b.date))
     saveData(data)
-    res.json({ imported: newRides.length, total: data.rides.length })
+    res.json({ imported: newRides.length, total: data.rides.length, races: formatted.filter(r => r.isRace).length })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: err.message })
